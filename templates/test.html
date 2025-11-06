@@ -101,14 +101,14 @@
         }
     .btn-try:hover .arrow { transform: translateX(4px); background: #ffffff; color: #000000; }
 
-        /* Immersive compact nav state (activated on scroll into demo) */
+        /* Immersive compact nav state (shrink on scroll, expand at top) */
         @media (min-width: 800px){
-            /* Wider compact state so items aren't cramped and sides aren't empty */
-            .nav.compact { width: clamp(720px, 88vw, 1100px); justify-content: space-between; gap: 28px; padding: 18px 32px; background: rgba(0,0,0,0.85); }
-            .nav.compact .nav-left { gap: 20px; }
-            .nav.compact .brand img.logo { height: 34px; filter: drop-shadow(0 1px 8px rgba(255,255,255,0.22)); transition: height .8s ease; }
-            .nav.compact .links a { margin-left: 24px; }
-            .nav.compact .btn-try { padding: 12px 16px; transform: scale(0.995); transition: transform .8s ease, padding .8s ease; }
+            /* Compact is a bit narrower but keeps healthy spacing */
+            .nav.compact { width: clamp(520px, 76vw, 860px); justify-content: space-between; gap: 22px; padding: 16px 24px; background: rgba(0,0,0,0.85); }
+            .nav.compact .nav-left { gap: 16px; }
+            .nav.compact .brand img.logo { height: 32px; filter: drop-shadow(0 1px 8px rgba(255,255,255,0.22)); transition: height .8s ease; }
+            .nav.compact .links a { margin-left: 16px; }
+            .nav.compact .btn-try { padding: 10px 14px; transform: scale(0.985); transition: transform .8s ease, padding .8s ease; }
         }
         @media (prefers-reduced-motion: reduce){
             .nav{ transition: none; }
@@ -634,6 +634,24 @@
                 if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); sendChat(); }
             });
 
+            // Ensure logo loads; retry with absolute path, then fall back to text label
+            const logo = document.querySelector('.brand img.logo');
+            if (logo){
+                logo.setAttribute('loading', 'eager');
+                logo.addEventListener('error', () => {
+                    if (!logo.dataset.retry){
+                        logo.dataset.retry = '1';
+                        logo.src = '/public/llm.png';
+                    } else {
+                        const text = document.createElement('span');
+                        text.textContent = 'LLM';
+                        text.style.fontWeight = '800';
+                        text.style.fontSize = '18px';
+                        logo.replaceWith(text);
+                    }
+                }, { once: true });
+            }
+
             // (examples selector removed with legacy header)
 
             // Default tab
@@ -652,8 +670,8 @@
             // GSAP animations
             initGSAPAnimations();
 
-            // Compact nav on scroll (GSAP or IntersectionObserver fallback)
-            initNavCompactScroll();
+            // Shrink nav when scrolled down; expand at top
+            initNavShrinkOnScroll();
 
             // Immersive hovers
             initInteractiveHover();
@@ -744,40 +762,34 @@
             gs.from('#cta .cta-wrap', {opacity: 0, y: 26, duration: 0.7, ease: 'power2.out', scrollTrigger: {trigger: '#cta', start: 'top 80%'}});
             gs.from('#cta .stat', {opacity: 0, y: 16, duration: 0.5, stagger: 0.08, ease: 'power2.out', scrollTrigger: {trigger: '#cta', start: 'top 75%'}});
 
-            // Immersive navbar compaction when demo section scrolls into view
-            window.ScrollTrigger.create({
-                trigger: '#demo',
-                start: 'top 80%',
-                end: 'bottom top',
-                toggleClass: {targets: '.nav', className: 'compact'}
-            });
+            // Use ScrollTrigger to toggle compact class based on scroll position relative to the top
+            const navEl = document.querySelector('.nav');
+            if (navEl){
+                window.ScrollTrigger.create({
+                    start: 40, // pixels from the very top
+                    end: 99999,
+                    onUpdate: (self) => {
+                        const shouldCompact = self.scroll() > 40;
+                        navEl.classList.toggle('compact', shouldCompact);
+                    }
+                });
+            }
         }
 
         // Fallback if GSAP/ScrollTrigger not available
-        function initNavCompactScroll(){
-            if (window.gsap && window.ScrollTrigger) return; // GSAP path handles this
-            const nav = document.querySelector('.nav');
-            const target = document.querySelector('#demo');
-            if (!nav || !target) return;
-            if ('IntersectionObserver' in window){
-                const obs = new IntersectionObserver((entries)=>{
-                    entries.forEach(e => {
-                        if (e.isIntersecting) nav.classList.add('compact');
-                        else nav.classList.remove('compact');
-                    });
-                }, { root: null, threshold: 0.1 });
-                obs.observe(target);
-            } else {
-                // Very simple scroll fallback
-                const onScroll = () => {
-                    const r = target.getBoundingClientRect();
-                    const vh = window.innerHeight || document.documentElement.clientHeight;
-                    const inView = r.top < vh * 0.8 && r.bottom > 0;
-                    nav.classList.toggle('compact', inView);
-                };
-                onScroll();
-                window.addEventListener('scroll', onScroll, {passive:true});
+        function initNavShrinkOnScroll(){
+            if (window.gsap && window.ScrollTrigger) {
+                // GSAP path will handle via ScrollTrigger above
+                return;
             }
+            const nav = document.querySelector('.nav');
+            if (!nav) return;
+            const onScroll = () => {
+                const y = window.scrollY || document.documentElement.scrollTop || 0;
+                nav.classList.toggle('compact', y > 40);
+            };
+            onScroll();
+            window.addEventListener('scroll', onScroll, {passive: true});
         }
 
         function initInteractiveHover(){
