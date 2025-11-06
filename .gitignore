@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+
+# Virtual environments
+.venv/
+.env
+
+# Logs and temp
+prompt_shield.log
+*.log
+.tmp/
+
+data/
+tmp_*.json
+
+# Models and large binaries
+models/
+*.joblib
+
+# VS Code
+.vscode/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Node (if any)
+node_modules/
+
+# Public static secrets safeguard
+templates/public/*.json
